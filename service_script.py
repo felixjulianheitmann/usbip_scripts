@@ -41,12 +41,34 @@ def parse_devices(list_output, exceptions):
 
 
 @click.command()
-@click.argument("usbip_bin")
 @click.argument("server")
-@click.argument("exceptions")
-def main(usbip_bin, server, exceptions):
+@click.option("attach_mode", default=False)
+@click.option("devices_file", default="devices.txt")
+def main(server, attach_mode, devices_file):
+    usbip_list_available_cmd = [
+        "usbip",
+        "list",
+        "-p",
+        "-r" if attach_mode else "-l",
+        server,
+    ]
+
+    usbip_proc_cmd = [
+        "usbip",
+        "attach" if attach_mode else "bind",
+        "-r",
+        server,
+        "-b",
+    ]
+
+    usbip_list_done_cmd = [
+        "usbip",
+        "port" if attach_mode else "list",
+        "-l",
+    ]
+
     while True:
-        lister = run([usbip_bin, "list", "-r", server], capture_output=True)
+        lister = run(usbip_list_available_cmd, capture_output=True)
         devices = parse_devices(lister.stdout.decode(), exceptions)
         for name, device in devices.items():
             try:
