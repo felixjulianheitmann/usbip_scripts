@@ -1,10 +1,10 @@
 [Unit]
-Description=Binding all devices from devices list
+Description=Binding all devices from attach file at ~/.config/usbip (Host: %I)
 After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python %h/.config/usbip/service-script.py --bind --device-list=%h/.config/usbip/devices
+ExecStart=/usr/bin/python %h/.config/usbip/service-script.py --bind --device-list=%h/.config/usbip/devices --host=%I
 
 [Install]
 WantedBy=default.target
