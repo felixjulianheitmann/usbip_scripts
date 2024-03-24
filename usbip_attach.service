@@ -1,0 +1,10 @@
+[Unit]
+Description=USB-IP: Binding all devices from binding file at ~/.config
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python %h/.config/usbip/usbip-scripts/service_script.py --attach --device-list=%h/.config/usbip/devices
+
+[Install]
+WantedBy=default.target
