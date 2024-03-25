@@ -3,15 +3,63 @@ import click
 from rich import print
 from time import sleep
 import asyncio
+import re
+
+
+def call(cmd):
+    return run(cmd, capture_output=True).stdout.decode()
+
+
+def do_regex(text, regex):
+    result = re.search(regex, text)
+    return [x for x in result.groups()]
+
+
+def get_ids(text):
+    return do_regex("[0-9a-f]{4}:[0-9a-f]{4}", text)
+
+
+def get_buses(text):
+    return do_regex("([0-9]+-[0-9]+\.?[0-9]?):", text)
+
+
+def get_ports(text):
+    return do_regex("Port ([0-9]{2}):", text)
+
+
+def list_local():
+    output = call(["usbip", "list", "-p", "-l"])
+    ids = get_ids(output)
+    buses = get_buses(output)
+    return dict(zip(ids, buses))
+
+
+def list_remote(host):
+    output = call(["usbip", "list", "-r", host, "-p", "-l"])
+    ids = get_ids(output)
+    buses = get_buses(output)
+    return dict(zip(ids, buses))
+
+
+def parse_verbose_lines(list_output, with_bus=False):
+    devices = {}
+    if len(list_output) < 0:
+        return devices
+
+        ids += id.group(0)
+        if not with_bus:
+            bus = re.search("[0-9]+-[0-9]+\.?[0-9]?", line)
+            if bus is None:
+                continue
+
+        return ids
+
+        devices[id.group(0)] = bus.group(0)
+
+    return devices
+
 
 async def loop(host, attach_mode, devices):
-    usbip_list_available_cmd = [
-        "usbip",
-        "list",
-        "-p",
-        "-r" if attach_mode else "-l",
-        host,
-    ]
 
     usbip_proc_cmd = [
         "usbip",
@@ -27,40 +75,17 @@ async def loop(host, attach_mode, devices):
         "-l",
     ]
 
-def parse_devices(list_output, exceptions):
-    devices = {}
-    if len(list_output) < 0:
-        return devices
+    while True:
+        available = parse_minimal_lines(call(usbip_list_available_cmd), devices)
+        processed = parse_verbose_lines(call(usbip_list_done_cmd), with_bus=False)
 
-    # Drop header
-    list_output = list_output.split("\n")[2:]
+        # check for devices to process that haven't been processed yet
+        for dev in devices:
+            if dev not in processed.values() and dev in available.values():
+                print(f"processing {dev}...")
+                run(usbip_proc_cmd + [available[dev]])
 
-    exceptions = exceptions.split(";")
-
-    for line in list_output:
-        line = line.strip()
-
-        if len(line) == 0 or line[:2] == "- " or line[0] == ":":
-            continue
-
-        # Skip exceptions
-        skip = False
-        for exception in exceptions:
-            if exception in line:
-                skip = True
-                break
-        if skip:
-            print(f"skipping {line}")
-            continue
-
-        id_end = line.find(":")
-        name_start = line[id_end:].find(":")
-        id = line[:id_end]
-        name = line[name_start:]
-
-        devices[name.strip()] = id
-
-    return devices
+        asyncio.sleep(1)
 
 
 @click.command()
