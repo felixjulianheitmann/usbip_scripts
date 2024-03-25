@@ -2,7 +2,30 @@ from subprocess import run
 import click
 from rich import print
 from time import sleep
+import asyncio
 
+async def loop(host, attach_mode, devices):
+    usbip_list_available_cmd = [
+        "usbip",
+        "list",
+        "-p",
+        "-r" if attach_mode else "-l",
+        host,
+    ]
+
+    usbip_proc_cmd = [
+        "usbip",
+        "attach" if attach_mode else "bind",
+        "-r",
+        host,
+        "-b",
+    ]
+
+    usbip_list_done_cmd = [
+        "usbip",
+        "port" if attach_mode else "list",
+        "-l",
+    ]
 
 def parse_devices(list_output, exceptions):
     devices = {}
@@ -41,44 +64,24 @@ def parse_devices(list_output, exceptions):
 
 
 @click.command()
-@click.argument("server")
+@click.argument("host")
 @click.option("attach_mode", default=False)
 @click.option("devices_file", default="devices.txt")
-def main(server, attach_mode, devices_file):
-    usbip_list_available_cmd = [
-        "usbip",
-        "list",
-        "-p",
-        "-r" if attach_mode else "-l",
-        server,
-    ]
+def main(host, attach_mode, devices_file):
+    with open(devices_file, "r") as f:
+        devices = f.read()
 
-    usbip_proc_cmd = [
-        "usbip",
-        "attach" if attach_mode else "bind",
-        "-r",
-        server,
-        "-b",
-    ]
+    asyncio.run(loop(host, attach_mode, devices))
+        # devices = parse_devices(lister.stdout.decode(), exceptions)
+        # for name, device in devices.items():
+        #     try:
+        #         bind_task = run([usbip_bin, "attach", "-r", server, "-d", device])
+        #         if bind_task.returncode == 0:
+        #             print(f"attaching to {name} - {device}...")
+        #     except Exception as e:
+        #         pass
 
-    usbip_list_done_cmd = [
-        "usbip",
-        "port" if attach_mode else "list",
-        "-l",
-    ]
-
-    while True:
-        lister = run(usbip_list_available_cmd, capture_output=True)
-        devices = parse_devices(lister.stdout.decode(), exceptions)
-        for name, device in devices.items():
-            try:
-                bind_task = run([usbip_bin, "attach", "-r", server, "-d", device])
-                if bind_task.returncode == 0:
-                    print(f"attaching to {name} - {device}...")
-            except Exception as e:
-                pass
-
-        sleep(3)
+        # sleep(3)
 
 
 if __name__ == "__main__":
