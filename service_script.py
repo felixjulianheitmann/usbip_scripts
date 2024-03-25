@@ -41,72 +41,41 @@ def list_remote(host):
     return dict(zip(ids, buses))
 
 
-def parse_verbose_lines(list_output, with_bus=False):
-    devices = {}
-    if len(list_output) < 0:
-        return devices
-
-        ids += id.group(0)
-        if not with_bus:
-            bus = re.search("[0-9]+-[0-9]+\.?[0-9]?", line)
-            if bus is None:
-                continue
-
-        return ids
-
-        devices[id.group(0)] = bus.group(0)
-
-    return devices
+def list_attached():
+    output = call(["usbip", "port", "-l"])
+    ids = get_ids(output)
+    ports = get_ports(output)
+    return dict(zip(ids, ports))
 
 
-async def loop(host, attach_mode, devices):
+def list_exported():
+    return list_remote("localhost")
 
-    usbip_proc_cmd = [
-        "usbip",
-        "attach" if attach_mode else "bind",
-        "-r",
-        host,
-        "-b",
-    ]
 
-    usbip_list_done_cmd = [
-        "usbip",
-        "port" if attach_mode else "list",
-        "-l",
-    ]
+def attach(host, device):
+    run(["usbip", "attach", "-r", host, "-b", device])
+
+
+def bind(device):
+    run(["usbip", "bind", "-b", device])
+
+
+async def loop(devices):
 
     while True:
         available = parse_minimal_lines(call(usbip_list_available_cmd), devices)
         processed = parse_verbose_lines(call(usbip_list_done_cmd), with_bus=False)
 
-        # check for devices to process that haven't been processed yet
-        for dev in devices:
-            if dev not in processed.values() and dev in available.values():
-                print(f"processing {dev}...")
-                run(usbip_proc_cmd + [available[dev]])
-
         asyncio.sleep(1)
 
 
 @click.command()
-@click.argument("host")
-@click.option("attach_mode", default=False)
 @click.option("devices_file", default="devices.txt")
 def main(host, attach_mode, devices_file):
     with open(devices_file, "r") as f:
         devices = f.read()
 
-    asyncio.run(loop(host, attach_mode, devices))
-        # devices = parse_devices(lister.stdout.decode(), exceptions)
-        # for name, device in devices.items():
-        #     try:
-        #         bind_task = run([usbip_bin, "attach", "-r", server, "-d", device])
-        #         if bind_task.returncode == 0:
-        #             print(f"attaching to {name} - {device}...")
-        #     except Exception as e:
-        #         pass
-
-        # sleep(3)
+    asyncio.run(loop(host, devices))
 
 
 if __name__ == "__main__":
