@@ -10,21 +10,18 @@ def call(cmd):
     return run(cmd, capture_output=True).stdout.decode()
 
 
-def do_regex(text, regex):
-    result = re.search(regex, text)
-    return [x for x in result.groups()]
-
-
 def get_ids(text):
-    return do_regex("[0-9a-f]{4}:[0-9a-f]{4}", text)
+    return re.findall("([0-9a-f]{4}:[0-9a-f]{4})", text)
 
 
 def get_buses(text):
-    return do_regex("([0-9]+-[0-9]+\.?[0-9]?):", text)
+    # TODO: Figure out how to exclude matches with leading/trailing slash
+    
+    return re.findall("([0-9]+-[0-9]+\.?[0-9]?)", text)
 
 
 def get_ports(text):
-    return do_regex("Port ([0-9]{2}):", text)
+    return re.findall("Port ([0-9]{2}):", text)
 
 
 def list_local():
@@ -61,21 +58,27 @@ def bind(device):
 
 
 async def loop(devices):
+    print("Starting loop, binding following devices if available: ", devices)
 
     while True:
-        available = parse_minimal_lines(call(usbip_list_available_cmd), devices)
-        processed = parse_verbose_lines(call(usbip_list_done_cmd), with_bus=False)
+        available = list_local()
+        processed = list_exported()
+        for dev in devices:
+            print("Processing device: ", dev)
+            if dev in available.keys() and dev not in processed.keys():
+                print("Device not yet bound but available! binding ...", dev)
+                bind(available[dev])
 
         asyncio.sleep(1)
 
 
 @click.command()
-@click.option("devices_file", default="devices.txt")
-def main(host, attach_mode, devices_file):
+@click.argument("devices_file", default="devices.txt")
+def main(devices_file):
     with open(devices_file, "r") as f:
-        devices = f.read()
+        devices = f.read().splitlines()
 
-    asyncio.run(loop(host, devices))
+    asyncio.run(loop(devices))
 
 
 if __name__ == "__main__":
