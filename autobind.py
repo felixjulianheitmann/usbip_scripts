@@ -1,10 +1,9 @@
 from subprocess import run
 import click
-from rich import print
-from time import sleep
+from loguru import logger as log
 import asyncio
 import re
-
+from pathlib import Path
 
 def call(cmd):
     return run(cmd, capture_output=True).stdout.decode()
@@ -54,30 +53,39 @@ def attach(host, device):
 
 
 def bind(device):
-    run(["usbip", "bind", "-b", device])
+    if run(["usbip", "bind", "-b", device]).returncode == 0:
+        return True
+    else:
+        return False
 
 
 async def loop(devices):
-    print("Starting loop, binding following devices if available: ", devices)
+    log.info("Starting loop, binding following devices if available: ", devices)
 
     while True:
         available = list_local()
         processed = list_exported()
         for dev in devices:
             if dev in available.keys() and dev not in processed.keys():
-                print("Device not yet bound but available! binding ...", dev)
-                bind(available[dev])
+                if bind(available[dev]):
+                    log.info(f"Successfully bound [{dev}]!")
 
         await asyncio.sleep(1)
 
 
 @click.command()
 @click.argument("devices_file", default="devices.txt")
-def main(devices_file):
+@click.argument("log_file", default="log.txt")
+def main(devices_file, log_file):
+    print("Creating log at: ", log_file)
+    log.add(log_file, rotation="10 kB", retention="10 days")
+    
     with open(devices_file, "r") as f:
         devices = f.read().splitlines()
 
     asyncio.run(loop(devices))
+    
+    log.info("Stopping autobind service")
 
 
 if __name__ == "__main__":
