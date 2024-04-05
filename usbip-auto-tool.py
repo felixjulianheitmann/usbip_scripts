@@ -54,7 +54,7 @@ def bind(device):
 
 
 def process_device(device, host):
-    if host is not None:
+    if host != '':
         success = attach(host, device)
     else:
         success = bind(device)
@@ -64,7 +64,7 @@ def process_device(device, host):
 
 
 def process_devices(devices, host):
-    if host is not None:
+    if host != '':
         available = list_remote(host)
         processed = list_attached()
     else:
@@ -88,7 +88,7 @@ async def loop(devices, host):
 @click.command()
 @click.argument("devices_file", default="devices.txt")
 @click.argument("log_file", default="log.txt")
-@click.argument("host", default=None)
+@click.argument("host", default='')
 def main(devices_file, log_file, host):
     print("Creating log at: ", log_file)
     log.add(log_file, rotation="10 kB", retention="10 days")
