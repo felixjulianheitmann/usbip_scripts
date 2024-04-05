@@ -98,7 +98,7 @@ def main(devices_file, log_file, host):
 
     asyncio.run(loop(devices, host))
 
-    log.info("Stopping autobind service")
+    log.info("Stopping service")
 
 
 if __name__ == "__main__":
