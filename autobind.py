@@ -64,12 +64,11 @@ async def loop(devices):
         available = list_local()
         processed = list_exported()
         for dev in devices:
-            print("Processing device: ", dev)
             if dev in available.keys() and dev not in processed.keys():
                 print("Device not yet bound but available! binding ...", dev)
                 bind(available[dev])
 
-        asyncio.sleep(1)
+        await asyncio.sleep(1)
 
 
 @click.command()
