@@ -5,7 +5,9 @@ import asyncio
 import re
 
 def call(cmd):
-    return run(cmd, capture_output=True).stdout.decode()
+    out = run(cmd, capture_output=True).stdout.decode()
+    log.debug(f"cmd {cmd}:\n{out}")
+    return out
 
 
 def get_ids(text):
@@ -13,7 +15,7 @@ def get_ids(text):
 
 
 def get_buses(text):
-    return re.findall("[^/]([0-9]+-[0-9]+\.?[0-9]?):", text)
+    return re.findall("[^\/]([0-9]+-[0-9]+(?>\.?[0-9])*)", text)
 
 
 def get_ports(text):
@@ -23,7 +25,9 @@ def get_ports(text):
 def list_local():
     output = call(["usbip", "list", "-p", "-l"])
     ids = get_ids(output)
+    log.info(f"ids: {ids}")
     buses = get_buses(output)
+    log.info(f"buses: {buses}")
     return dict(zip(ids, buses))
 
 
@@ -71,6 +75,8 @@ def process_devices(devices, host):
         available = list_local()
         processed = list_exported()
 
+    log.info(f"Available: {available}")
+    log.info(f"Processed: {processed}")
     for dev in devices:
         if dev in available.keys() and dev not in processed.keys():
             process_device(available[dev], host)
