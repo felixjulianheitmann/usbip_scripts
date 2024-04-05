@@ -4,7 +4,7 @@ After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python /opt/usbip/ubsip-auto-tool.py /opt/usbip/devices.txt /var/log/usbip/log.txt %I
+ExecStart=/usr/bin/python /opt/usbip/usbip-auto-tool.py /opt/usbip/devices.txt /var/log/usbip/log.txt %I
 
 [Install]
 WantedBy=default.target
