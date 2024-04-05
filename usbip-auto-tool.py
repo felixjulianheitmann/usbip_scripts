@@ -102,9 +102,10 @@ def main(devices_file, log_file, host):
     with open(devices_file, "r") as f:
         devices = f.read().splitlines()
 
-    asyncio.run(loop(devices, host))
-
-    log.info("Stopping service")
+    try:
+        asyncio.run(loop(devices, host))
+    except:
+        log.info("Stopping service")
 
 
 if __name__ == "__main__":
