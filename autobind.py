@@ -59,16 +59,34 @@ def bind(device):
         return False
 
 
-async def loop(devices):
+def process_device(device, host):
+    if host is not None:
+        success = bind(device)
+    else:
+        success = attach(host, device)
+
+    if success:
+        log.info(f"Successfully processed [{device}]!")
+
+
+def process_devices(devices, host):
+    if host is not None:
+        available = list_remote(host)
+        processed = list_attached()
+    else:
+        available = list_local()
+        processed = list_exported()
+
+    for dev in devices:
+        if dev in available.keys() and dev not in processed.keys():
+            process_device(available[dev], host)
+
+
+async def loop(devices, host):
     log.info("Starting loop, binding following devices if available: ", devices)
 
     while True:
-        available = list_local()
-        processed = list_exported()
-        for dev in devices:
-            if dev in available.keys() and dev not in processed.keys():
-                if bind(available[dev]):
-                    log.info(f"Successfully bound [{dev}]!")
+        process_devices(devices, host)
 
         await asyncio.sleep(1)
 
@@ -76,15 +94,16 @@ async def loop(devices):
 @click.command()
 @click.argument("devices_file", default="devices.txt")
 @click.argument("log_file", default="log.txt")
-def main(devices_file, log_file):
+@click.option("host", default=None)
+def main(devices_file, log_file, host):
     print("Creating log at: ", log_file)
     log.add(log_file, rotation="10 kB", retention="10 days")
-    
+
     with open(devices_file, "r") as f:
         devices = f.read().splitlines()
 
-    asyncio.run(loop(devices))
-    
+    asyncio.run(loop(devices, host))
+
     log.info("Stopping autobind service")
 
 
