@@ -6,7 +6,6 @@ import re
 
 def call(cmd):
     out = run(cmd, capture_output=True).stdout.decode()
-    log.debug(f"cmd {cmd}:\n{out}")
     return out
 
 
@@ -25,9 +24,7 @@ def get_ports(text):
 def list_local():
     output = call(["usbip", "list", "-p", "-l"])
     ids = get_ids(output)
-    log.info(f"ids: {ids}")
     buses = get_buses(output)
-    log.info(f"buses: {buses}")
     return dict(zip(ids, buses))
 
 
@@ -59,8 +56,10 @@ def bind(device):
 
 def process_device(device, host):
     if host != '':
+        log.info(f"Trying to attach {device}")
         success = attach(host, device)
     else:
+        log.info(f"Trying to bind {device}")
         success = bind(device)
 
     if success:
@@ -75,6 +74,7 @@ def process_devices(devices, host):
         available = list_local()
         processed = list_exported()
 
+    log.info(f"Searched: {devices}")
     log.info(f"Available: {available}")
     log.info(f"Processed: {processed}")
     for dev in devices:
@@ -88,7 +88,7 @@ async def loop(devices, host):
     while True:
         process_devices(devices, host)
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(5)
 
 
 @click.command()
@@ -97,7 +97,7 @@ async def loop(devices, host):
 @click.argument("host", default='')
 def main(devices_file, log_file, host):
     print("Creating log at: ", log_file)
-    log.add(log_file, rotation="10 kB", retention="10 days")
+    log.add(log_file, rotation="10 kB", retention="10 days", format="{time} {message}")
 
     with open(devices_file, "r") as f:
         devices = f.read().splitlines()
